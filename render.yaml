@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: reach-frontend
-    env: static
+    name: my-nextjs-frontend
+    env: node
+    plan: free   # or starter/pro depending on your plan
     buildCommand: npm install && npm run build
-    staticPublishPath: .next
+    startCommand: npm run start
     envVars:
-      - key: REACT_APP_API_BASE_URL
-        value: https://reach-backend-yq82.onrender.com
+      - key: NODE_VERSION
+        value: 18
