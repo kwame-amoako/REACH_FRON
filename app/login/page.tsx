@@ -81,25 +81,23 @@ export default function LoginPage() {
     setError("") // Clear error when user types
   }
 
-  // Generate 4-digit OTP
-  const generateOTP = () => {
-    return Math.floor(1000 + Math.random() * 9000).toString()
-  }
-
   // Send OTP
-  const sendOTP = async (email: string) => {
+  // Send OTP
+const sendOTP = async (phone: string) => {
   try {
     setIsLoading(true)
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/send-otp`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/services/sendOtp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ phone }),
     })
 
     if (!response.ok) throw new Error("Failed to send OTP")
 
     const data = await response.json()
     setOtpTimer(60)
+    localStorage.setItem("otpId", data.otpId)
+    localStorage.setItem("pendingPhone", phone)
     return data.otpId
   } catch (err) {
     throw new Error("Failed to send OTP")
@@ -107,6 +105,7 @@ export default function LoginPage() {
     setIsLoading(false)
   }
 }
+
 
 
   // Validate credentials
@@ -175,8 +174,8 @@ export default function LoginPage() {
       }
 
       // Send OTP
-      const email = isLogin ? formData.email : signupData.email
-      await sendOTP(email)
+      const phone = isLogin ? signupData.phone : signupData.phone
+      await sendOTP(phone)
       setCurrentStep("otp")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Validation failed")
@@ -192,13 +191,14 @@ export default function LoginPage() {
 
   try {
     const otpId = localStorage.getItem("otpId")
-    const email = localStorage.getItem("pendingEmail")
+    const phone = localStorage.getItem("pendingPhone")
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp, otpId }),
-    })
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, otp, otpId }),
+   })
+
 
     if (!res.ok) {
       const errData = await res.json()
@@ -209,7 +209,7 @@ export default function LoginPage() {
 
     localStorage.setItem("isLoggedIn", "true")
     localStorage.setItem("token", data.token)
-    localStorage.setItem("userEmail", email || "")
+    localStorage.setItem("userPhone", phone || "")
 
     router.push("/dashboard")
   } catch (err) {
@@ -307,7 +307,7 @@ export default function LoginPage() {
                   ? activeTab === "login"
                     ? "Sign in to your account to continue"
                     : "Join REACH and start your digital finance journey"
-                  : `We've sent a 4-digit code to ${activeTab === "login" ? formData.email : signupData.email}`}
+                  : `We've sent a 4-digit code to ${activeTab === "login" ? signupData.phone : signupData.phone}`}
               </p>
             </div>
 
@@ -378,7 +378,7 @@ export default function LoginPage() {
                     required
                     disabled={isLoading}
                   />
-                  <p className="text-xs text-gray-500 text-center">Enter the 4-digit code sent to your email</p>
+                  <p className="text-xs text-gray-500 text-center">Enter the 4-digit code sent to your phone</p>
                 </div>
 
                 {/* Resend OTP */}
