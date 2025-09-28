@@ -193,7 +193,7 @@ const sendOTP = async (phone: string) => {
     const otpId = localStorage.getItem("otpId")
     const phone = localStorage.getItem("pendingPhone")
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/verify-otp`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/services/sendOtp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ phone, otp, otpId }),
