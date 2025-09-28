@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: reach-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_BASE_URL
+        value: https://reach-backend-yq82.onrender.com
