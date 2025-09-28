@@ -1,207 +1,125 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://reach-backend-yq82.onrender.com"
-
-type Step = "login" | "signup" | "otp"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
 
 export default function LoginPage() {
-  const [currentStep, setCurrentStep] = useState<Step>("login")
-  const [formData, setFormData] = useState({ email: "", password: "" })
-  const [signupData, setSignupData] = useState({ name: "", email: "", password: "", phone: "" })
-  const [otp, setOtp] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"login" | "otp">("login");
+  const [error, setError] = useState("");
 
-  // Handle input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, type: "login" | "signup") => {
-    const { name, value } = e.target
-    if (type === "login") setFormData((prev) => ({ ...prev, [name]: value }))
-    else setSignupData((prev) => ({ ...prev, [name]: value }))
-  }
+  // Step 1: login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
 
-  // Handle login/signup
-  const validateCredentials = async (isLogin: boolean) => {
-    setIsLoading(true)
-    setError("")
     try {
-      if (isLogin) {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || "Login failed")
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-        setCurrentStep("otp") // Move to OTP step
-      } else {
-        const res = await fetch(`${API_BASE}/api/auth/signup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(signupData),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message || "Signup failed")
+      const data = await res.json();
 
-        setCurrentStep("otp") // Move to OTP step
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        return;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
-  // Verify OTP
-  const verifyOtpAndAuthenticate = async () => {
-    setIsLoading(true)
-    setError("")
+      // ✅ Backend should send OTP to user email/phone
+      setStep("otp");
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong");
+    }
+  };
+
+  // Step 2: verify OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
     try {
       const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: currentStep === "login" ? formData.email : signupData.email,
-          otp,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || "Invalid OTP")
+        body: JSON.stringify({ email, otp }),
+      });
 
-      // Save token and redirect
-      localStorage.setItem("token", data.token)
-      router.push("/dashboard")
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Invalid OTP");
+        return;
+      }
+
+      // ✅ OTP is valid → redirect to dashboard (or home)
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "OTP verification failed")
-    } finally {
-      setIsLoading(false)
+      console.error(err);
+      setError("Something went wrong");
     }
-  }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white shadow-md rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-center mb-4">
-          {currentStep === "login" && "Login"}
-          {currentStep === "signup" && "Sign Up"}
-          {currentStep === "otp" && "Verify OTP"}
-        </h2>
-
-        {error && <p className="text-red-500 text-center">{error}</p>}
-
-        {currentStep === "login" && (
-          <>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-full max-w-md p-6 bg-white rounded shadow">
+        {step === "login" && (
+          <form onSubmit={handleLogin}>
+            <h2 className="text-xl font-bold mb-4">Login</h2>
             <input
               type="email"
-              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              value={formData.email}
-              onChange={(e) => handleChange(e, "login")}
-              className="w-full p-2 mb-2 border rounded"
+              className="w-full mb-3 p-2 border rounded"
+              required
             />
             <input
               type="password"
-              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              value={formData.password}
-              onChange={(e) => handleChange(e, "login")}
-              className="w-full p-2 mb-4 border rounded"
+              className="w-full mb-3 p-2 border rounded"
+              required
             />
+            {error && <p className="text-red-500">{error}</p>}
             <button
-              onClick={() => validateCredentials(true)}
-              disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-2 rounded"
+              type="submit"
+              className="w-full p-2 bg-blue-500 text-white rounded"
             >
-              {isLoading ? "Logging in..." : "Login"}
+              Login
             </button>
-            <p className="text-center mt-3">
-              Don’t have an account?{" "}
-              <button
-                onClick={() => setCurrentStep("signup")}
-                className="text-blue-600 underline"
-              >
-                Sign up
-              </button>
-            </p>
-          </>
+          </form>
         )}
 
-        {currentStep === "signup" && (
-          <>
+        {step === "otp" && (
+          <form onSubmit={handleVerifyOtp}>
+            <h2 className="text-xl font-bold mb-4">Enter OTP</h2>
             <input
               type="text"
-              name="name"
-              placeholder="Full Name"
-              value={signupData.name}
-              onChange={(e) => handleChange(e, "signup")}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={signupData.email}
-              onChange={(e) => handleChange(e, "signup")}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={signupData.password}
-              onChange={(e) => handleChange(e, "signup")}
-              className="w-full p-2 mb-2 border rounded"
-            />
-            <input
-              type="text"
-              name="phone"
-              placeholder="Phone Number"
-              value={signupData.phone}
-              onChange={(e) => handleChange(e, "signup")}
-              className="w-full p-2 mb-4 border rounded"
-            />
-            <button
-              onClick={() => validateCredentials(false)}
-              disabled={isLoading}
-              className="w-full bg-green-600 text-white py-2 rounded"
-            >
-              {isLoading ? "Signing up..." : "Sign Up"}
-            </button>
-            <p className="text-center mt-3">
-              Already have an account?{" "}
-              <button
-                onClick={() => setCurrentStep("login")}
-                className="text-blue-600 underline"
-              >
-                Login
-              </button>
-            </p>
-          </>
-        )}
-
-        {currentStep === "otp" && (
-          <>
-            <input
-              type="text"
-              placeholder="Enter OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
-              className="w-full p-2 mb-4 border rounded"
+              placeholder="OTP"
+              className="w-full mb-3 p-2 border rounded"
+              required
             />
+            {error && <p className="text-red-500">{error}</p>}
             <button
-              onClick={verifyOtpAndAuthenticate}
-              disabled={isLoading}
-              className="w-full bg-purple-600 text-white py-2 rounded"
+              type="submit"
+              className="w-full p-2 bg-green-500 text-white rounded"
             >
-              {isLoading ? "Verifying..." : "Verify OTP"}
+              Verify OTP
             </button>
-          </>
+          </form>
         )}
       </div>
     </div>
-  )
+  );
 }
